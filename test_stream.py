@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-#import plotly.express as px
-#import plotly.graph_objects as go
 import datetime
 from datetime import timedelta
 import random
@@ -194,21 +192,11 @@ if menu == "대시보드":
     with col4:
         st.metric(label="심각도", value="높음", delta="증가")
     
-    # 타임라인 요약 그래프
+    # 타임라인 요약 표
     st.subheader("침해사고 타임라인 요약")
     
-    # Gantt 차트로 타임라인 표시
-    fig = px.timeline(
-        timeline_df, 
-        x_start="시작시간", 
-        x_end="종료시간", 
-        y="단계",
-        color="로그수",
-        hover_name="설명",
-        title="침해사고 진행 타임라인"
-    )
-    fig.update_yaxes(autorange="reversed")
-    st.plotly_chart(fig, use_container_width=True)
+    # 타임라인 데이터 표시
+    st.dataframe(timeline_df)
     
     # 로그 유형 및 심각도 분포
     col1, col2 = st.columns(2)
@@ -216,19 +204,12 @@ if menu == "대시보드":
     with col1:
         st.subheader("로그 유형 분포")
         log_type_counts = logs_df["로그유형"].value_counts()
-        fig = px.pie(names=log_type_counts.index, values=log_type_counts.values)
-        st.plotly_chart(fig, use_container_width=True)
+        st.bar_chart(log_type_counts)
         
     with col2:
         st.subheader("심각도 분포")
         severity_counts = logs_df["심각도"].value_counts()
-        fig = px.bar(
-            x=severity_counts.index, 
-            y=severity_counts.values,
-            color=severity_counts.index,
-            labels={"x": "심각도", "y": "로그 수"}
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        st.bar_chart(severity_counts)
     
     # 최근 로그 표시
     st.subheader("최근 로그")
@@ -266,12 +247,7 @@ elif menu == "타임라인 분석":
                 
                 # 로그 유형 분포
                 log_types = stage_logs["로그유형"].value_counts()
-                fig = px.pie(
-                    names=log_types.index,
-                    values=log_types.values,
-                    title="로그 유형 분포"
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                st.bar_chart(log_types)
                 
                 # 단계별 분석 결과 (시뮬레이션)
                 st.markdown("#### 분석 결과")
@@ -313,73 +289,14 @@ elif menu == "타임라인 분석":
     - **데이터 유출**: Exfiltration (TA0010)
     """)
     
-    # 타임라인 시각화
+    # 간소화된 타임라인 시각화
     st.subheader("타임라인 시각화")
     
-    # 복잡한 타임라인 그래프 (시뮬레이션)
-    fig = go.Figure()
+    # 타임라인 데이터를 표 형식으로 표시
+    st.table(timeline_df[['단계', '시작시간', '종료시간', '로그수']])
     
-    # 각 단계의 시작, 중간, 끝 시간 추출
-    for i, row in timeline_df.iterrows():
-        start_time = datetime.datetime.strptime(row['시작시간'], "%Y-%m-%d %H:%M:%S")
-        end_time = datetime.datetime.strptime(row['종료시간'], "%Y-%m-%d %H:%M:%S")
-        mid_time = start_time + (end_time - start_time) / 2
-        
-        # 타임라인 단계 추가
-        fig.add_trace(go.Scatter(
-            x=[start_time, end_time],
-            y=[i, i],
-            mode='lines',
-            line=dict(width=10, color=px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)]),
-            name=row['단계']
-        ))
-        
-        # 단계명 추가
-        fig.add_annotation(
-            x=mid_time,
-            y=i,
-            text=row['단계'],
-            showarrow=False,
-            font=dict(color="black", size=14),
-            bgcolor="white",
-            bordercolor="black",
-            borderwidth=1,
-            borderpad=4
-        )
-        
-        # 이벤트 포인트 추가 (시뮬레이션)
-        for j in range(3):
-            event_time = start_time + (end_time - start_time) * random.uniform(0.1, 0.9)
-            event_text = ["의심스러운 로그인", "권한 변경", "파일 접근", "데이터베이스 쿼리", "외부 통신"][random.randint(0, 4)]
-            
-            fig.add_trace(go.Scatter(
-                x=[event_time],
-                y=[i],
-                mode='markers',
-                marker=dict(size=12, symbol='diamond', color='red'),
-                name=event_text,
-                showlegend=False
-            ))
-            
-            fig.add_annotation(
-                x=event_time,
-                y=i + 0.3,
-                text=event_text,
-                showarrow=True,
-                arrowhead=2,
-                arrowcolor="red",
-                font=dict(size=10),
-                bgcolor="white"
-            )
-    
-    fig.update_layout(
-        title="침해사고 상세 타임라인",
-        xaxis_title="시간",
-        height=400,
-        showlegend=False
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    # 단계별 로그수를 바 차트로 표시
+    st.bar_chart(timeline_df.set_index('단계')['로그수'])
 
 # 3. RAG 검색 시스템
 elif menu == "RAG 검색 시스템":
@@ -544,7 +461,7 @@ elif menu == "질의응답(QA)":
             st.dataframe(filtered_logs)
         
         with tab2:
-            # 질문과 관련된 타임라인 단계 강조 (시뮬레이션)
+            # 질문과 관련된 타임라인 단계 강조
             highlight_stages = []
             
             if "초기 접근" in question:
@@ -560,20 +477,11 @@ elif menu == "질의응답(QA)":
             elif "단계" in question or "과정" in question:
                 highlight_stages = timeline_df["단계"].tolist()
             
-            # 타임라인 시각화 (하이라이트)
-            fig = px.timeline(
-                timeline_df,
-                x_start="시작시간",
-                x_end="종료시간",
-                y="단계",
-                color=[1 if stage in highlight_stages else 0.3 for stage in timeline_df["단계"]],
-                hover_name="설명",
-                color_continuous_scale=["lightgray", "red"],
-                title="답변 관련 타임라인 단계"
-            )
-            fig.update_yaxes(autorange="reversed")
-            fig.update_coloraxes(showscale=False)
-            st.plotly_chart(fig, use_container_width=True)
+            # 간소화된 타임라인 표시
+            highlighted_timeline = timeline_df.copy()
+            highlighted_timeline["강조"] = highlighted_timeline["단계"].apply(lambda x: "✓" if x in highlight_stages else "")
+            
+            st.dataframe(highlighted_timeline[["단계", "시작시간", "종료시간", "강조", "로그수"]])
         
         with tab3:
             # 질문과 관련된 참고 문서 (시뮬레이션)
